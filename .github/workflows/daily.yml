@@ -1,13 +1,11 @@
 name: Daily probe tick
 
-# NOTE: schedule is intentionally disabled in this initial commit. After
-# the first manual workflow_dispatch run lands cleanly, we will re-enable
-# the cron line and re-commit. This avoids accidentally firing the daily
-# tick on an unverified pipeline.
+# Verified end-to-end on 2026-04-11 via workflow_dispatch run 24293578010.
+# Daily cron now enabled.
 on:
   workflow_dispatch:
-  # schedule:
-  #   - cron: '15 8 * * *'   # 08:15 UTC daily
+  schedule:
+    - cron: '15 8 * * *'   # 08:15 UTC daily
 
 permissions:
   contents: write   # needed to commit results back to the repo
