@@ -1,0 +1,219 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Quantization Canary — Claude Opus 4.6</title>
+  <link rel="stylesheet" href="style.css">
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ccircle cx='50' cy='50' r='40' fill='%23ffd84d'/%3E%3C/svg%3E">
+</head>
+<body>
+  <header>
+    <h1>Quantization Canary <span class="model-tag">Claude Opus 4.6</span></h1>
+    <nav>
+      <a href="#home" data-section="home">Home</a>
+      <a href="#evidence" data-section="evidence">Evidence</a>
+      <a href="#methodology" data-section="methodology">Methodology</a>
+      <a href="https://github.com/jeqcho/quantization-canary" target="_blank" rel="noopener">GitHub →</a>
+    </nav>
+  </header>
+
+  <main>
+
+    <!-- ─────────────── HOME ─────────────── -->
+    <section id="home" class="page">
+      <div id="status-card" class="status-card status-loading">
+        <div class="status-emoji" id="status-emoji">⏳</div>
+        <div class="status-label" id="status-label">Loading…</div>
+        <div class="status-detail" id="status-detail">Reading data.json</div>
+      </div>
+
+      <div class="meta-line" id="meta-line"></div>
+
+      <div class="chart-card">
+        <h2>Fingerprint similarity over time</h2>
+        <p class="chart-help">
+          Daily mean character-level edit distance (<code>D</code>) between Opus 4.6's
+          output and the pinned baseline reference, across all 30 probes.
+          The shaded band is the calibration noise floor (±1σ around target).
+          Hover any point for the date and exact value.
+        </p>
+        <canvas id="similarity-chart" height="120"></canvas>
+        <p class="chart-empty" id="chart-empty">No tick data yet. Run <code>uv run python -m src.worker</code> to populate.</p>
+      </div>
+
+      <div class="links-row">
+        <a href="#evidence" class="link-button">See per-prompt evidence →</a>
+        <a href="#methodology" class="link-button">Methodology →</a>
+      </div>
+    </section>
+
+    <!-- ─────────────── EVIDENCE ─────────────── -->
+    <section id="evidence" class="page hidden">
+      <h2>Per-prompt evidence (latest tick)</h2>
+      <p class="section-help">
+        All probes from the latest daily tick, sorted by absolute z-score
+        descending. Click any row to expand to the side-by-side diff between
+        the baseline reference and today's samples. Use "Replay prompt" to
+        copy the exact API call parameters and verify yourself.
+      </p>
+      <table id="evidence-table">
+        <thead>
+          <tr>
+            <th>id</th>
+            <th>category</th>
+            <th>z<sub>i</sub></th>
+            <th>d<sub>i</sub></th>
+            <th>verdict</th>
+          </tr>
+        </thead>
+        <tbody id="evidence-tbody">
+        </tbody>
+      </table>
+      <p class="evidence-empty" id="evidence-empty">No tick data yet.</p>
+    </section>
+
+    <!-- ─────────────── METHODOLOGY ─────────────── -->
+    <section id="methodology" class="page hidden">
+      <h2>Methodology</h2>
+
+      <h3>What this site does</h3>
+      <p>
+        Every day, a GitHub Actions cron calls Anthropic's API and runs a fixed
+        set of 30 prompts against <code>claude-opus-4-6</code> at
+        <code>temperature=0</code>, three times each. We measure how much each
+        prompt's output differs from a pinned baseline reference (recorded once
+        during one-time calibration), aggregate, and publish the result.
+      </p>
+
+      <h3>The metric</h3>
+      <p>
+        Per-prompt distance is the <strong>median normalized character-level
+        Levenshtein distance</strong> between today's three samples and the
+        baseline reference. This is implemented with
+        <code>rapidfuzz.distance.Levenshtein.normalized_distance</code> and
+        is reproducible in any language in a few lines of code.
+      </p>
+      <p>
+        We chose character-level (not token-level) because the Anthropic Python
+        SDK no longer ships a local tokenizer (the legacy
+        <code>get_tokenizer()</code> was removed in SDK 0.39.0), and the
+        server-side <code>count_tokens</code> endpoint returns only an integer
+        — not the token sequence we'd need for a Levenshtein alignment. Any
+        local tokenization is therefore a proxy. Character-level is the
+        simplest, most reproducible proxy and, on our 200–400-token outputs,
+        offers strictly better signal-to-noise than a hash-equality metric.
+      </p>
+
+      <h3>The verdict</h3>
+      <p>
+        For each prompt we compute a z-score against the per-prompt noise
+        floor measured in calibration. The site's primary indicator combines:
+      </p>
+      <ul>
+        <li>An <strong>abrupt detector</strong>: the daily aggregate Z compared
+          against empirical yellow/red thresholds (the 95th and 99.5th percentiles
+          of the calibration Z distribution).</li>
+        <li>A <strong>slow-drift detector</strong>: an upper-sided CUSUM
+          control chart on the daily aggregate D, with k and h calibrated
+          against the calibration D distribution.</li>
+      </ul>
+
+      <h3>What this site does <em>not</em> claim</h3>
+      <p>
+        From black-box API access, the categories <em>quantization change</em>,
+        <em>weight swap</em>, and <em>server-side moderation rewrite</em> are not
+        cleanly separable. A quantized model <em>is</em> a weight change. A
+        server-side classifier rewrite can mimic either. So the site does not
+        attempt to attribute which kind of change occurred. It detects
+        <em>"something changed"</em> and shows the literal before/after
+        evidence — visitors decide what it means.
+      </p>
+
+      <h3>Sensitivity floor (important)</h3>
+      <p>
+        Calibration measured the intrinsic <code>temperature=0</code>
+        nondeterminism of Opus 4.6 on long-form prose at roughly
+        <strong>20% of output characters per call</strong>, sample-to-sample.
+        That is the noise floor we live with. We did not pick it; it
+        comes from Anthropic's serving stack (mixed-precision arithmetic,
+        variable batching, possibly speculative decoding) and we have no
+        way to lower it from outside.
+      </p>
+      <p>
+        What this means in practice:
+      </p>
+      <ul>
+        <li>
+          <strong>Detected:</strong> dramatic changes — model swaps (a
+          different checkpoint silently shipped under the same model ID),
+          heavy requantization (e.g., FP16 → INT4), large fine-tuning
+          rounds, server-side moderation rewrites that change refusal
+          patterns. Anything that adds roughly <code>≥0.10</code> to the
+          aggregate distance metric.
+        </li>
+        <li>
+          <strong>Not detected:</strong> subtle quantization changes that
+          stay inside the noise floor. The kind of update that would take
+          a careful human side-by-side comparison to spot is also
+          plausibly small enough to hide here. We are honest about this
+          limit instead of pretending we have superhuman drift sensitivity.
+        </li>
+      </ul>
+      <p>
+        We chose long-form prompts on purpose: long outputs with many
+        near-margin token decisions are the most sensitive to genuine
+        weight drift. They are also, for the same reason, the noisiest
+        at <code>temperature=0</code>. The trade-off is intrinsic, and
+        the empirical calibration thresholds (<code>yellow_z</code>,
+        <code>red_z</code>, <code>cusum.k</code>, <code>cusum.h</code>)
+        are derived from the actual measured noise distribution rather
+        than hardcoded — so the system flags drift relative to whatever
+        the noise floor turned out to be on the day of calibration.
+      </p>
+      <p>
+        For the same reason, the per-prompt drill-down on the Evidence tab
+        will routinely show diffs even on stable days. <em>Some</em> drift
+        between baseline and today's samples is normal; only <em>aggregate
+        drift well above the calibration distribution</em> is meaningful.
+        Read the diffs as supporting evidence for the aggregate verdict,
+        not as standalone proof.
+      </p>
+
+      <h3>Baseline resets</h3>
+      <p>
+        The site does not auto-reset its baseline. When the verdict goes and
+        stays red, evidence stays up. A human (anyone with repo access)
+        decides whether to run a new calibration — for example, after Anthropic
+        publishes a model update — or leave the alarm in place as an
+        unannounced-change flag. Old baselines stay in the repo forever
+        under their version number, so anyone can replay the full history.
+      </p>
+
+      <h3>Reproducibility</h3>
+      <p>
+        Every probe, every calibration sample, every daily result, and every
+        intermediate artifact lives in
+        <a href="https://github.com/jeqcho/quantization-canary" target="_blank" rel="noopener">the GitHub repo</a>
+        as a git-tracked JSON file. Anyone can clone, fork, or replay the
+        analysis from scratch. The dataset is the provenance.
+      </p>
+
+      <h3>External references</h3>
+      <ul>
+        <li><a href="https://docs.anthropic.com/en/release-notes" target="_blank" rel="noopener">Anthropic changelog</a> — context for officially announced model updates.</li>
+        <li><a href="https://github.com/jeqcho/quantization-canary" target="_blank" rel="noopener">Source code &amp; full dataset</a></li>
+      </ul>
+    </section>
+
+  </main>
+
+  <footer>
+    <span id="footer-meta"></span>
+  </footer>
+
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/diff@7.0.0/dist/diff.min.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>

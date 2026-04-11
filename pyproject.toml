@@ -1,0 +1,22 @@
+[project]
+name = "quantization-canary"
+version = "0.1.0"
+description = "Public fingerprint-based watchdog for silent changes to Claude Opus 4.6."
+readme = "README.md"
+requires-python = ">=3.11"
+license = { text = "MIT" }
+dependencies = [
+    "anthropic>=0.40.0",
+    "rapidfuzz>=3.0.0",
+    "python-dotenv>=1.0.0",
+]
+
+[dependency-groups]
+dev = [
+    "pytest>=8.0.0",
+]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = "test_*.py"
+addopts = "-ra -q"

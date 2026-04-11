@@ -134,6 +134,12 @@ celerybeat.pid
 # SageMath parsed files
 *.sage.py
 
+# Mocked E2E artifacts (synthetic-only, written by scripts/mocked_e2e.py)
+mock_run/
+
+# Local worker / calibration logs - production logs live in GitHub Actions runs
+logs/
+
 # Environments
 .env
 .envrc

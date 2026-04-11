@@ -1,0 +1,78 @@
+name: Daily probe tick
+
+# NOTE: schedule is intentionally disabled in this initial commit. After
+# the first manual workflow_dispatch run lands cleanly, we will re-enable
+# the cron line and re-commit. This avoids accidentally firing the daily
+# tick on an unverified pipeline.
+on:
+  workflow_dispatch:
+  # schedule:
+  #   - cron: '15 8 * * *'   # 08:15 UTC daily
+
+permissions:
+  contents: write   # needed to commit results back to the repo
+
+concurrency:
+  group: daily-tick
+  cancel-in-progress: false
+
+jobs:
+  tick:
+    name: Run daily probe tick
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+        with:
+          # We need write access for the bot push later
+          persist-credentials: true
+          fetch-depth: 1
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+        with:
+          version: "0.8.5"
+
+      - name: Set up Python
+        run: uv python install 3.13
+
+      - name: Sync project dependencies
+        run: uv sync --frozen
+
+      - name: Run probe worker
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+        run: uv run python -m src.worker
+
+      - name: Show today's verdict in the job log
+        run: |
+          set -e
+          latest=$(ls -t results/*.json | head -1)
+          echo "=== ${latest} ==="
+          uv run python -c "
+          import json
+          r = json.load(open('${latest}'))
+          print(f\"date={r['date']}  D={r['D']:.4f}  Z={r['Z']:.4f}  verdict={r['verdict']}\")
+          print(f\"cusum_state={r['cusum_state']:.6f}  alarmed={r['cusum_alarmed']}  streak={r['cusum_alarm_streak']}\")
+          "
+
+      - name: Commit and push new artifacts
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -e
+          git config user.name  "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+          # Stage only the directories the worker writes; never blanket-add.
+          git add results/ docs/data.json
+
+          if git diff --cached --quiet; then
+            echo "No new artifacts to commit (worker produced no changes)."
+            exit 0
+          fi
+
+          today=$(date -u +%Y-%m-%d)
+          git commit -m "tick: ${today}"
+          git push origin HEAD:${{ github.ref_name }}
