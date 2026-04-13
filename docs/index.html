@@ -63,13 +63,21 @@
         most-suspicious first. Click any row to see the actual diff.
       </p>
       <table id="evidence-table">
+        <colgroup>
+          <col class="col-id">
+          <col class="col-category">
+          <col class="col-drift">
+          <col class="col-noise">
+          <col class="col-zscore">
+          <col class="col-status">
+        </colgroup>
         <thead>
           <tr>
             <th>id</th>
             <th>category</th>
-            <th>drift</th>
-            <th>expected noise</th>
-            <th>z-score</th>
+            <th style="text-align:right">drift</th>
+            <th style="text-align:right">expected noise</th>
+            <th style="text-align:right">z-score</th>
             <th>status</th>
           </tr>
         </thead>

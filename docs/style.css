@@ -189,12 +189,23 @@ table {
   border-radius: 8px;
   overflow: hidden;
   font-size: 0.94rem;
+  table-layout: fixed;
 }
+
+/* Column widths for the 6-column evidence table */
+table col.col-id       { width: 10%; }
+table col.col-category { width: 16%; }
+table col.col-drift    { width: 14%; }
+table col.col-noise    { width: 24%; }
+table col.col-zscore   { width: 14%; }
+table col.col-status   { width: 22%; }
 
 th, td {
   text-align: left;
   padding: 0.7em 0.9em;
   border-bottom: 1px solid #efefef;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 th {
@@ -216,10 +227,12 @@ td.numeric {
   font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
   text-align: right;
   font-variant-numeric: tabular-nums;
+  white-space: nowrap;
 }
 
 td.verdict-cell {
   font-weight: 600;
+  white-space: nowrap;
 }
 .v-green   { color: #4ca449; }
 .v-yellow  { color: #b88c00; }
