@@ -52,19 +52,25 @@
     <section id="evidence" class="page hidden">
       <h2>Per-prompt evidence (latest tick)</h2>
       <p class="section-help">
-        All probes from the latest daily tick, sorted by absolute z-score
-        descending. Click any row to expand to the side-by-side diff between
-        the baseline reference and today's samples. Use "Replay prompt" to
-        copy the exact API call parameters and verify yourself.
+        Each row is one of the 30 test prompts we send to Opus 4.6 daily.
+        <strong>Drift</strong> is how much today's output differs from the
+        pinned baseline (0% = identical, 100% = completely different).
+        <strong>Expected noise</strong> is the range of drift we measured
+        during calibration — anything inside that range is normal T=0 jitter.
+        <strong>Z-score</strong> is how unusual today's drift is relative to
+        that noise (positive = more drift than expected, negative = less,
+        only high positives are concerning). Rows are sorted
+        most-suspicious first. Click any row to see the actual diff.
       </p>
       <table id="evidence-table">
         <thead>
           <tr>
             <th>id</th>
             <th>category</th>
-            <th>z<sub>i</sub></th>
-            <th>d<sub>i</sub></th>
-            <th>verdict</th>
+            <th>drift</th>
+            <th>expected noise</th>
+            <th>z-score</th>
+            <th>status</th>
           </tr>
         </thead>
         <tbody id="evidence-tbody">

@@ -198,12 +198,18 @@
 
     DATA.latest.per_prompt.forEach((pp, idx) => {
       const tr = document.createElement("tr");
+      const driftPct = (pp.d !== undefined && pp.d !== null) ? (pp.d * 100).toFixed(1) + "%" : "—";
+      const noiseMu = pp.baseline_mu !== undefined ? (pp.baseline_mu * 100).toFixed(1) : "?";
+      const noiseSig = pp.baseline_sigma !== undefined ? (pp.baseline_sigma * 100).toFixed(1) : "?";
+      const noiseStr = `${noiseMu}% &pm; ${noiseSig}%`;
+      const vrd = verdictFromZ(pp.z);
       tr.innerHTML =
         `<td>${escapeHtml(pp.id)}</td>` +
         `<td>${escapeHtml(pp.category)}</td>` +
-        `<td class="numeric">${formatNum(pp.z, 3)}</td>` +
-        `<td class="numeric">${formatNum(pp.d, 4)}</td>` +
-        `<td class="verdict-cell ${verdictClassFromZ(pp.z)}">${verdictFromZ(pp.z)}</td>`;
+        `<td class="numeric">${driftPct}</td>` +
+        `<td class="numeric">${noiseStr}</td>` +
+        `<td class="numeric">${formatNum(pp.z, 2)}</td>` +
+        `<td class="verdict-cell ${vrd.cls}">${vrd.dot} ${vrd.label}</td>`;
       tr.dataset.idx = idx;
       tr.addEventListener("click", () => toggleDrilldown(tr, pp));
       tbody.appendChild(tr);
@@ -222,10 +228,30 @@
     const dd = document.createElement("tr");
     dd.classList.add("drilldown");
     const td = document.createElement("td");
-    td.colSpan = 5;
+    td.colSpan = 6;
 
     const baselineRef = pp.baseline_reference || "";
     const samples = pp.samples || [];
+    const driftPct = (pp.d * 100).toFixed(1);
+    const noiseMuPct = pp.baseline_mu !== undefined ? (pp.baseline_mu * 100).toFixed(1) : "?";
+    const noiseSigPct = pp.baseline_sigma !== undefined ? (pp.baseline_sigma * 100).toFixed(1) : "?";
+
+    // Plain-English interpretation of the numbers
+    let interpretation;
+    const zAbs = Math.abs(pp.z);
+    if (zAbs < 1.0) {
+      interpretation = `This level of drift is <strong>well within the noise floor</strong> — normal T=0 jitter.`;
+    } else if (zAbs < 2.0) {
+      interpretation = `This drift is <strong>mildly unusual</strong> but still within the noise floor.`;
+    } else if (zAbs < 3.0) {
+      interpretation = `This drift is <strong>moderately unusual</strong> — worth watching over the next few days.`;
+    } else {
+      interpretation = `This drift is <strong>highly unusual</strong> — significantly outside the calibration noise floor.`;
+    }
+    if (pp.z < -0.5) {
+      interpretation = `Today's output is <strong>closer to baseline than usual</strong> — less drift than the calibration average. Not concerning.`;
+    }
+
     const diffHtml = samples
       .map((s, i) => {
         const html = renderInlineDiff(baselineRef, s);
@@ -246,8 +272,17 @@
       `<div class="drilldown-content">
         <h4>Prompt</h4>
         <div class="prompt-text">${escapeHtml(pp.prompt || "")}</div>
-        <h4>Baseline metrics</h4>
-        <div class="prompt-text">μ_i = ${formatNum(pp.baseline_mu, 5)} &nbsp; σ_i = ${formatNum(pp.baseline_sigma, 5)} &nbsp; today d_i = ${formatNum(pp.d, 5)} &nbsp; z_i = ${formatNum(pp.z, 3)}</div>
+        <h4>What happened</h4>
+        <p class="interpretation">
+          Today's output is <strong>${driftPct}% different</strong> from baseline.
+          During calibration, this prompt typically varied by
+          <strong>${noiseMuPct}%</strong> (&pm;${noiseSigPct}%).
+          ${interpretation}
+        </p>
+        <details class="raw-stats">
+          <summary>Raw stats</summary>
+          <div class="prompt-text">μ = ${formatNum(pp.baseline_mu, 5)} &nbsp; σ = ${formatNum(pp.baseline_sigma, 5)} &nbsp; d = ${formatNum(pp.d, 5)} &nbsp; z = ${formatNum(pp.z, 3)}</div>
+        </details>
         <h4>Diff: baseline reference vs today's samples</h4>
         ${diffHtml}
         <button class="replay-button" data-id="${escapeHtml(pp.id)}">Copy "replay" snippet</button>
@@ -335,14 +370,10 @@ print(response.content[0].text)`;
   }
 
   function verdictFromZ(z) {
-    if (!DATA || !DATA.thresholds) return "—";
+    if (!DATA || !DATA.thresholds) return { dot: "—", label: "", cls: "" };
     const az = Math.abs(z);
-    if (az >= DATA.thresholds.red_z) return "red";
-    if (az >= DATA.thresholds.yellow_z) return "yellow";
-    return "green";
-  }
-
-  function verdictClassFromZ(z) {
-    return "v-" + verdictFromZ(z);
+    if (az >= DATA.thresholds.red_z) return { dot: "🔴", label: "Anomaly", cls: "v-red" };
+    if (az >= DATA.thresholds.yellow_z) return { dot: "🟡", label: "Watch", cls: "v-yellow" };
+    return { dot: "🟢", label: "Stable", cls: "v-green" };
   }
 })();
