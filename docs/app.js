@@ -146,7 +146,7 @@
           // Bottom edge
           { data: labels.map(() => floor),  borderWidth: 0, pointRadius: 0, pointHitRadius: 0, fill: false },
 
-          // ── boundary lines (subtle dashes) ──
+          // ── boundary lines (subtle dashes, both upper and lower) ──
           {
             label: "stable / watch boundary (±2σ)",
             data: labels.map(() => g2up),
@@ -155,8 +155,20 @@
             pointRadius: 0, pointHitRadius: 0, fill: false,
           },
           {
+            data: labels.map(() => g2down),
+            borderColor: "rgba(76,164,73,0.5)",
+            borderWidth: 1, borderDash: [6, 4],
+            pointRadius: 0, pointHitRadius: 0, fill: false,
+          },
+          {
             label: "watch / alarm boundary (±3σ)",
             data: labels.map(() => y3up),
+            borderColor: "rgba(200,57,45,0.5)",
+            borderWidth: 1, borderDash: [6, 4],
+            pointRadius: 0, pointHitRadius: 0, fill: false,
+          },
+          {
+            data: labels.map(() => y3down),
             borderColor: "rgba(200,57,45,0.5)",
             borderWidth: 1, borderDash: [6, 4],
             pointRadius: 0, pointHitRadius: 0, fill: false,
