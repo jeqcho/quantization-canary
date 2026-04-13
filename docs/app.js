@@ -202,8 +202,8 @@
           y: {
             ticks: { font: { size: 12 } },
             title: { display: true, text: "Normalized edit distance", font: { size: 13 } },
-            suggestedMin: floor,
-            suggestedMax: ceil,
+            min: floor,
+            max: ceil,
           },
         },
       },
