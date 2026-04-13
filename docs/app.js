@@ -112,11 +112,15 @@
     const nb = DATA.noise_band || {};
     const center = nb.center !== undefined ? nb.center : 0;
     const dStd = nb.std !== undefined ? nb.std : 0;
-    // ±2σ covers ~95% of stable days, so "outside the band" visually
-    // corresponds to "actually suspicious" rather than "normal jitter
-    // that happens 1 in 3 days" (which is what ±1σ would show).
-    const upperBand = labels.map(() => center + 2 * dStd);
-    const lowerBand = labels.map(() => Math.max(0, center - 2 * dStd));
+    // Zone boundaries in D-space, based on σ of the calibration D
+    // distribution. Green = within ±2σ (~95% of stable days),
+    // Yellow = 2σ–3σ above center, Red = beyond 3σ above center.
+    // We only show upward zones because upward drift (further from
+    // baseline) is the concerning direction.
+    const green2s = center + 2 * dStd;
+    const yellow3s = center + 3 * dStd;
+    const chartCeil = center + 5 * dStd;
+    const chartFloor = Math.max(0, center - 3 * dStd);
 
     if (chartInstance) {
       chartInstance.destroy();
@@ -126,34 +130,60 @@
       data: {
         labels: labels,
         datasets: [
+          // ── colored zone fills (hidden from legend) ──
+          // Red zone: above 3σ → fills down to yellow boundary
           {
-            label: "expected range (+2σ)",
-            data: upperBand,
-            borderColor: "rgba(100,100,100,0.5)",
-            backgroundColor: "rgba(180,200,220,0.35)",
+            data: labels.map(() => chartCeil),
+            borderWidth: 0, pointRadius: 0, pointHitRadius: 0,
             fill: "+1",
-            pointRadius: 0,
-            borderWidth: 1.5,
-            borderDash: [6, 3],
+            backgroundColor: "rgba(200, 57, 45, 0.10)",
+          },
+          // Yellow zone: 2σ–3σ → fills down to green boundary
+          {
+            data: labels.map(() => yellow3s),
+            borderWidth: 0, pointRadius: 0, pointHitRadius: 0,
+            fill: "+1",
+            backgroundColor: "rgba(212, 167, 8, 0.12)",
+          },
+          // Green zone: below 2σ → fills down to bottom
+          {
+            data: labels.map(() => green2s),
+            borderWidth: 0, pointRadius: 0, pointHitRadius: 0,
+            fill: "+1",
+            backgroundColor: "rgba(76, 164, 73, 0.10)",
+          },
+          // Bottom boundary (invisible)
+          {
+            data: labels.map(() => chartFloor),
+            borderWidth: 0, pointRadius: 0, pointHitRadius: 0,
+            fill: false,
+          },
+          // ── zone boundary lines (subtle dashes) ──
+          {
+            label: "green / yellow boundary (2σ)",
+            data: labels.map(() => green2s),
+            borderColor: "rgba(76, 164, 73, 0.5)",
+            borderWidth: 1, borderDash: [6, 4],
+            pointRadius: 0, pointHitRadius: 0,
+            fill: false,
           },
           {
-            label: "expected range (−2σ)",
-            data: lowerBand,
-            borderColor: "rgba(100,100,100,0.5)",
-            backgroundColor: "rgba(180,200,220,0.35)",
+            label: "yellow / red boundary (3σ)",
+            data: labels.map(() => yellow3s),
+            borderColor: "rgba(200, 57, 45, 0.5)",
+            borderWidth: 1, borderDash: [6, 4],
+            pointRadius: 0, pointHitRadius: 0,
             fill: false,
-            pointRadius: 0,
-            borderWidth: 1.5,
-            borderDash: [6, 3],
           },
+          // ── the actual data line (the star of the show) ──
           {
             label: "D(t) — daily fingerprint distance",
             data: dValues,
             borderColor: "#0a5ec7",
             backgroundColor: "#0a5ec7",
             borderWidth: 2.5,
-            pointRadius: 4,
-            pointHoverRadius: 6,
+            pointRadius: 5,
+            pointHoverRadius: 7,
             tension: 0.18,
             fill: false,
           },
@@ -162,12 +192,19 @@
       options: {
         responsive: true,
         plugins: {
-          legend: { position: "bottom", labels: { font: { size: 13 } } },
+          legend: {
+            position: "bottom",
+            labels: {
+              font: { size: 13 },
+              // Only show labeled datasets in the legend (hides zone fills)
+              filter: function (item) { return !!item.text; },
+            },
+          },
           tooltip: {
             callbacks: {
               label: function (ctx) {
-                if (ctx.dataset.label.startsWith("D(")) {
-                  return `D=${ctx.parsed.y.toFixed(4)}`;
+                if (ctx.dataset.label && ctx.dataset.label.startsWith("D(")) {
+                  return `D = ${ctx.parsed.y.toFixed(4)}`;
                 }
                 return null;
               },
@@ -179,8 +216,8 @@
           y: {
             ticks: { font: { size: 12 } },
             title: { display: true, text: "Normalized edit distance", font: { size: 13 } },
-            suggestedMin: Math.max(0, center - dStd * 4),
-            suggestedMax: center + dStd * 5,
+            suggestedMin: chartFloor,
+            suggestedMax: chartCeil,
           },
         },
       },

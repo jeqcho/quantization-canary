@@ -35,9 +35,13 @@
         <p class="chart-help">
           Daily mean character-level edit distance (<code>D</code>) between Opus 4.6's
           output and the pinned baseline reference, across all 30 probes.
-          The shaded band is the expected range (±2σ around the calibration
-          mean) — on a stable day, ~95% of data points should land inside it.
-          A point outside the band is worth watching. Hover for date and value.
+          <strong style="color:#4ca449">Green zone</strong> = expected range
+          (within 2&sigma; of calibration mean, ~95% of stable days land here).
+          <strong style="color:#b88c00">Yellow zone</strong> = elevated
+          (2&sigma;–3&sigma;, worth watching).
+          <strong style="color:#c8392d">Red zone</strong> = alarm
+          (beyond 3&sigma;, very unlikely on a stable day).
+          Hover any point for the date and exact value.
         </p>
         <canvas id="similarity-chart" height="120"></canvas>
         <p class="chart-empty" id="chart-empty">No tick data yet. Run <code>uv run python -m src.worker</code> to populate.</p>
