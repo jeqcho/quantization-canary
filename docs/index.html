@@ -59,7 +59,12 @@
         during calibration — anything inside that range is normal T=0 jitter.
         <strong>Z-score</strong> is how unusual today's drift is relative to
         that noise (positive = more drift than expected, negative = less,
-        only high positives are concerning). Rows are sorted
+        only high positives are concerning).
+        <strong>Status</strong> is derived from the z-score using standard
+        statistical thresholds: &lt;2.0 = 🟢 Stable (normal jitter),
+        2.0–3.0 = 🟡 Watch (mildly unusual, but with 30 prompts you'd
+        expect 1–2 per day from chance alone), &gt;3.0 = 🔴 Anomaly
+        (genuinely unusual for a single prompt). Rows are sorted
         most-suspicious first. Click any row to see the actual diff.
       </p>
       <table id="evidence-table">
