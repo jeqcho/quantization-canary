@@ -112,8 +112,11 @@
     const nb = DATA.noise_band || {};
     const center = nb.center !== undefined ? nb.center : 0;
     const dStd = nb.std !== undefined ? nb.std : 0;
-    const upperBand = labels.map(() => center + dStd);
-    const lowerBand = labels.map(() => Math.max(0, center - dStd));
+    // ±2σ covers ~95% of stable days, so "outside the band" visually
+    // corresponds to "actually suspicious" rather than "normal jitter
+    // that happens 1 in 3 days" (which is what ±1σ would show).
+    const upperBand = labels.map(() => center + 2 * dStd);
+    const lowerBand = labels.map(() => Math.max(0, center - 2 * dStd));
 
     if (chartInstance) {
       chartInstance.destroy();
@@ -124,7 +127,7 @@
         labels: labels,
         datasets: [
           {
-            label: "noise floor (+1σ)",
+            label: "expected range (+2σ)",
             data: upperBand,
             borderColor: "rgba(100,100,100,0.5)",
             backgroundColor: "rgba(180,200,220,0.35)",
@@ -134,7 +137,7 @@
             borderDash: [6, 3],
           },
           {
-            label: "noise floor (−1σ)",
+            label: "expected range (−2σ)",
             data: lowerBand,
             borderColor: "rgba(100,100,100,0.5)",
             backgroundColor: "rgba(180,200,220,0.35)",
@@ -176,8 +179,8 @@
           y: {
             ticks: { font: { size: 12 } },
             title: { display: true, text: "Normalized edit distance", font: { size: 13 } },
-            suggestedMin: Math.max(0, center - dStd * 3),
-            suggestedMax: center + dStd * 4,
+            suggestedMin: Math.max(0, center - dStd * 4),
+            suggestedMax: center + dStd * 5,
           },
         },
       },
