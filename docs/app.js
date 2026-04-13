@@ -369,11 +369,21 @@ print(response.content[0].text)`;
     return Number(n).toFixed(digits);
   }
 
+  // Per-prompt status uses standard z-score thresholds (2.0 / 3.0),
+  // NOT the aggregate yellow_z / red_z from calibration. The aggregate
+  // thresholds are calibrated for the mean-of-30-z-scores, which has a
+  // much tighter distribution than individual z-scores. Using them here
+  // would cause many individual prompts to show "Anomaly" even on
+  // perfectly stable days, because individual z > 0.35 is commonplace
+  // while aggregate Z > 0.35 is rare.
+  //
+  // With 30 prompts, ~1-2 prompts above |z|=2.0 per day is expected
+  // from normal jitter — visitors should not be alarmed by a couple of
+  // yellow rows.
   function verdictFromZ(z) {
-    if (!DATA || !DATA.thresholds) return { dot: "—", label: "", cls: "" };
     const az = Math.abs(z);
-    if (az >= DATA.thresholds.red_z) return { dot: "🔴", label: "Anomaly", cls: "v-red" };
-    if (az >= DATA.thresholds.yellow_z) return { dot: "🟡", label: "Watch", cls: "v-yellow" };
+    if (az >= 3.0) return { dot: "🔴", label: "Anomaly", cls: "v-red" };
+    if (az >= 2.0) return { dot: "🟡", label: "Watch", cls: "v-yellow" };
     return { dot: "🟢", label: "Stable", cls: "v-green" };
   }
 })();
