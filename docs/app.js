@@ -109,12 +109,11 @@
 
     const labels = DATA.history.map((h) => h.date);
     const dValues = DATA.history.map((h) => h.D);
-    const targetD = DATA.cusum && DATA.cusum.target_D !== undefined ? DATA.cusum.target_D : 0;
-    const dStd = DATA.calibration_distributions && DATA.calibration_distributions.d_std
-      ? DATA.calibration_distributions.d_std
-      : 0;
-    const upperBand = labels.map(() => targetD + dStd);
-    const lowerBand = labels.map(() => Math.max(0, targetD - dStd));
+    const nb = DATA.noise_band || {};
+    const center = nb.center !== undefined ? nb.center : 0;
+    const dStd = nb.std !== undefined ? nb.std : 0;
+    const upperBand = labels.map(() => center + dStd);
+    const lowerBand = labels.map(() => Math.max(0, center - dStd));
 
     if (chartInstance) {
       chartInstance.destroy();
@@ -127,22 +126,22 @@
           {
             label: "noise floor (+1σ)",
             data: upperBand,
-            borderColor: "rgba(140,140,140,0.4)",
-            backgroundColor: "rgba(140,140,140,0.12)",
+            borderColor: "rgba(100,100,100,0.5)",
+            backgroundColor: "rgba(180,200,220,0.35)",
             fill: "+1",
             pointRadius: 0,
-            borderWidth: 1,
-            borderDash: [4, 4],
+            borderWidth: 1.5,
+            borderDash: [6, 3],
           },
           {
             label: "noise floor (−1σ)",
             data: lowerBand,
-            borderColor: "rgba(140,140,140,0.4)",
-            backgroundColor: "rgba(140,140,140,0.12)",
+            borderColor: "rgba(100,100,100,0.5)",
+            backgroundColor: "rgba(180,200,220,0.35)",
             fill: false,
             pointRadius: 0,
-            borderWidth: 1,
-            borderDash: [4, 4],
+            borderWidth: 1.5,
+            borderDash: [6, 3],
           },
           {
             label: "D(t) — daily fingerprint distance",
@@ -175,9 +174,10 @@
         scales: {
           x: { ticks: { font: { size: 12 } } },
           y: {
-            beginAtZero: true,
             ticks: { font: { size: 12 } },
             title: { display: true, text: "Normalized edit distance", font: { size: 13 } },
+            suggestedMin: Math.max(0, center - dStd * 3),
+            suggestedMax: center + dStd * 4,
           },
         },
       },

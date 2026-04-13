@@ -128,6 +128,10 @@ def build_rollup(
         "n_probes": len(probes),
         "thresholds": baseline.get("thresholds", {}),
         "cusum": baseline.get("cusum", {}),
+        "noise_band": {
+            "center": baseline.get("cusum", {}).get("target_D", 0),
+            "std": baseline.get("calibration_distributions", {}).get("d_std", 0),
+        },
         "latest": latest,
         "history": history,
     }
